@@ -292,7 +292,7 @@ if __name__ == "__main__":
         def __init__(self, status, route, x, y):
             self.status, self.route, self.x, self.y = status, route, x, y
 
-    def autoPlay():
+    def autoPlayBFS():
         import queue
         import copy
         restore()
@@ -300,6 +300,9 @@ if __name__ == "__main__":
         b1["state"] = DISABLED
         b2["state"] = DISABLED
         b3["state"] = DISABLED
+        b4["state"] = DISABLED
+        b5["state"] = DISABLED
+        b6["state"] = DISABLED
         cv.unbind("<Button-1>")
         dictionary = {}  # 记录访问列表
         statusQueue = queue.Queue()
@@ -310,21 +313,27 @@ if __name__ == "__main__":
             if front.status == finalBoard:
                 print("成功！")
                 print("路径：", front.route)
-                showinfo(title="计算完成", message="空白方块点击路径为："+str(front.route))
+                showinfo(title="计算完成", message="空白方块点击路径为：\n" +
+                         str(front.route)+"\n步数为："+str(len(front.route)))
                 b2["text"] = "演示中，请稍后……"
                 import time
                 for step in front.route:
                     autoClick(step[0], step[1])
                     time.sleep(1)
-                b2["text"] = "自动游戏"
+                b2["text"] = "自动游戏（BFS）"
                 b1["state"] = NORMAL
                 b2["state"] = NORMAL
                 b3["state"] = NORMAL
+                b4["state"] = NORMAL
+                b5["state"] = NORMAL
+                b6["state"] = NORMAL
                 cv.bind("<Button-1>", mouseclick)
                 return 0
             key = generateKey(front.status)
             dictionary[key] = 1
-            for i in range(-(COLS-1), COLS-1):  # 左右->列
+            for i in range(-(COLS-1), COLS):  # 左右->列
+                if i == 0:
+                    continue
                 if front.y+i >= 0 and front.y+i <= COLS-1:  # 判断合法性
                     next = Status(copy.deepcopy(front.status),
                                   copy.deepcopy(front.route), 0, 0)
@@ -337,7 +346,9 @@ if __name__ == "__main__":
                     if key not in dictionary:
                         dictionary[key] = 1
                         statusQueue.put(next)
-            for j in range(-(ROWS-1), ROWS-1):  # 上下->行
+            for j in range(-(ROWS-1), ROWS):  # 上下->行
+                if j == 0:
+                    continue
                 if front.x+j >= 0 and front.x+j <= ROWS-1:  # 判断合法性
                     next = Status(copy.deepcopy(front.status),
                                   copy.deepcopy(front.route), 0, 0)
@@ -349,6 +360,79 @@ if __name__ == "__main__":
                     if key not in dictionary:
                         dictionary[key] = 1
                         statusQueue.put(next)
+
+    def autoPlayDFS():
+        import copy
+        restore()
+        b3["text"] = "运算中，请稍后……"
+        b1["state"] = DISABLED
+        b2["state"] = DISABLED
+        b3["state"] = DISABLED
+        b4["state"] = DISABLED
+        b5["state"] = DISABLED
+        b6["state"] = DISABLED
+        cv.unbind("<Button-1>")
+        depthLimit = 20
+        statusStack = []
+        while depthLimit < 114:  # 最大深度
+            statusStack.append(Status(copy.deepcopy(
+                primaryBoard), [], nonePos[0], nonePos[1]))
+            key = generateKey(primaryBoard)
+            dictionary = {key: 0}  # value表示层数
+            while len(statusStack):
+                front = statusStack.pop()
+                if front.status == finalBoard:
+                    print("成功！")
+                    print("路径：", front.route)
+                    showinfo(title="计算完成", message="空白方块点击路径为：\n" +
+                             str(front.route)+"\n最深层数为："+str(dictionary[generateKey(finalBoard)]))
+                    b3["text"] = "演示中，请稍后……"
+                    import time
+                    for step in front.route:
+                        autoClick(step[0], step[1])
+                        time.sleep(1)
+                    b3["text"] = "自动游戏（DFS）"
+                    b1["state"] = NORMAL
+                    b2["state"] = NORMAL
+                    b3["state"] = NORMAL
+                    b4["state"] = NORMAL
+                    b5["state"] = NORMAL
+                    b6["state"] = NORMAL
+                    cv.bind("<Button-1>", mouseclick)
+                    return 0
+                key = generateKey(front.status)
+                if dictionary[key] > depthLimit:  # 超限了
+                    continue
+                for i in range(-(COLS-1), COLS):  # 左右->列
+                    if i == 0:
+                        continue
+                    if front.y+i >= 0 and front.y+i <= COLS-1:  # 判断合法性
+                        next = Status(copy.deepcopy(front.status),
+                                      copy.deepcopy(front.route), 0, 0)
+                        next.status[front.x][front.y +
+                                             i], next.status[front.x][front.y] = next.status[front.x][front.y], next.status[front.x][front.y+i]
+                        next.route.append([front.x, front.y+i])
+                        next.x, next.y = front.x, front.y+i
+                        newkey = generateKey(next.status)
+                        print(newkey)
+                        if newkey not in dictionary:
+                            dictionary[newkey] = dictionary[key]+1
+                            statusStack.append(next)
+                for j in range(-(ROWS-1), ROWS):  # 上下->行
+                    if j == 0:
+                        continue
+                    if front.x+j >= 0 and front.x+j <= ROWS-1:  # 判断合法性
+                        next = Status(copy.deepcopy(front.status),
+                                      copy.deepcopy(front.route), 0, 0)
+                        next.status[front.x+j][front.y], next.status[front.x][front.y] = next.status[front.x][front.y], next.status[front.x+j][front.y]
+                        next.route.append([front.x+j, front.y])
+                        next.x, next.y = front.x+j, front.y
+                        newkey = generateKey(next.status)
+                        print(newkey)
+                        if newkey not in dictionary:
+                            dictionary[newkey] = dictionary[key]+1
+                            statusStack.append(next)
+            depthLimit += 1  # 未找到，扩大界限
 
     def restore():
         for i in range(ROWS):
@@ -363,15 +447,22 @@ if __name__ == "__main__":
 
     import threading
 
-    def autoPlayThread():
-        t = threading.Thread(target=autoPlay)  # 多线程，防止阻塞UI
+    def autoPlayBFSThread():
+        t = threading.Thread(target=autoPlayBFS)  # 多线程，防止阻塞UI
+        t.start()
+
+    def autoPlayDFSThread():
+        t = threading.Thread(target=autoPlayDFS)  # 多线程，防止阻塞UI
         t.start()
 
     # 设置窗口
     cv = Canvas(root, bg='green', width=WIDTH, height=HEIGHT)
     b1 = Button(root, text="重新生成", command=callBack2, width=10)
-    b2 = Button(root, text="自动游戏", command=autoPlayThread, width=30)
-    b3 = Button(root, text="重置回初始（不重生成）", command=restore, width=30)
+    b2 = Button(root, text="自动游戏（BFS）", command=autoPlayBFSThread, width=30)
+    b3 = Button(root, text="自动游戏（DFS）", command=autoPlayDFSThread, width=30)
+    b4 = Button(root, text="自动游戏（）", command=autoPlayBFSThread, width=30)
+    b5 = Button(root, text="自动游戏（）", command=autoPlayBFSThread, width=30)
+    b6 = Button(root, text="重置回初始（不重生成）", command=restore, width=30)
     label1 = Label(root, text="0", fg="red", width=20)
     label1.pack()
     cv.bind("<Button-1>", mouseclick)
@@ -380,6 +471,7 @@ if __name__ == "__main__":
     b1.pack()
     b2.pack()
     b3.pack()
+    b6.pack()
     play_game()
     drawBoard(cv)
     root.mainloop()
