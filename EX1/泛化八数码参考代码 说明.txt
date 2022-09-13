@@ -1,0 +1,15 @@
+题目：泛化八数码问题
+
+提供Python GUI编程(Tkinter)在八数码问题的简单应用参考；
+提供图片切割的代码参考；
+# 参考：https://mp.weixin.qq.com/s?__biz=MzA4Nzk0MjQ4NA==&mid=2651832327&idx=1&sn=ebdfdea3c46c4875b01ca9f1a9127832&chksm=8bcad43cbcbd5d2abe7b2bbcedc6b430eadad2949b7fcd9311a435859ff8b2eeaa094577039d&mpshare=1&scene=1&srcid=1002oSRDPlzP1iKjDVpxviCg&sharer_sharetime=1601680745526&sharer_shareid=f79652d3d635914fb4b18ede0397c9e9&key=892b62220735b7b9fc2c1877bb5cc0bf2e0081d50bd7752d76032b0eafba81508676acd33da7d31fb2edef0c1ad1bdf39a3af48c8919087b248bfe81249b20bc3323091e40619746506c4897f03d7569e1d212aa7a89c806f01dbe2449c722867f61f2475159e994ecc4868eeb991ec6b78fe3df652e006cf2194fdbc1ca4ec2&ascene=1&uin=MTM2MjM3NjkzNw%3D%3D&devicetype=Windows+7+x64&version=62090529&lang=zh_CN&exportkey=AwF7Nh%2BFI31v5V%2F6KbTz99w%3D&pass_ticket=jT2e%2BiPw3N%2Bn6YleMmgY8ar4aTAd07SHFJdtebNKaWb9crunKl319QtjoemEDt2r&wx_header=0
+# 提供增加循环移位功能： 设置： bCycle = 1; # 循环移位标志 added by zim
+
+扩展选做题：
+（1）在原始问题（ bCycle = 0）和循环移位（ bCycle = 1）两种情况下，从初始状态到目标状态的变换，符合什么规律才可解（提示参考：逆序数）？
+（2）可进一步扩展为： nXn 而不强制n=3。 原始问题和循环移位下，计算复杂度是否有不同？
+
+
+
+
+
