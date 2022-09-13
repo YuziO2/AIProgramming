@@ -5,20 +5,19 @@
 # @Site    :
 # @File    : tmpPuzzle.py
 # @Software: PyCharm
+# 参考：https://mp.weixin.qq.com/s?__biz=MzA4Nzk0MjQ4NA==&mid=2651832327&idx=1&sn=ebdfdea3c46c4875b01ca9f1a9127832&chksm=8bcad43cbcbd5d2abe7b2bbcedc6b430eadad2949b7fcd9311a435859ff8b2eeaa094577039d&mpshare=1&scene=1&srcid=1002oSRDPlzP1iKjDVpxviCg&sharer_sharetime=1601680745526&sharer_shareid=f79652d3d635914fb4b18ede0397c9e9&key=892b62220735b7b9fc2c1877bb5cc0bf2e0081d50bd7752d76032b0eafba81508676acd33da7d31fb2edef0c1ad1bdf39a3af48c8919087b248bfe81249b20bc3323091e40619746506c4897f03d7569e1d212aa7a89c806f01dbe2449c722867f61f2475159e994ecc4868eeb991ec6b78fe3df652e006cf2194fdbc1ca4ec2&ascene=1&uin=MTM2MjM3NjkzNw%3D%3D&devicetype=Windows+7+x64&version=62090529&lang=zh_CN&exportkey=AwF7Nh%2BFI31v5V%2F6KbTz99w%3D&pass_ticket=jT2e%2BiPw3N%2Bn6YleMmgY8ar4aTAd07SHFJdtebNKaWb9crunKl319QtjoemEDt2r&wx_header=0
+# bCut = 1  设置分割图片为3*3
+# 增加循环移位功能： 设置： bCycle = 1; # 循环移位标志 added by zim
+# 可进一步扩展为： nXn 而不强制n=3
 # ----------------------------------------------------------------
-# @Time    : 2020-10-3 13:24
+# @Time    : 2022-9-13 13:24
 # @Author  : Yuzi0201
 # @Site    :
 # @File    : tmpPuzzleWithAutoPlay.py
 # @Software: VsCode
-# 参考：https://mp.weixin.qq.com/s?__biz=MzA4Nzk0MjQ4NA==&mid=2651832327&idx=1&sn=ebdfdea3c46c4875b01ca9f1a9127832&chksm=8bcad43cbcbd5d2abe7b2bbcedc6b430eadad2949b7fcd9311a435859ff8b2eeaa094577039d&mpshare=1&scene=1&srcid=1002oSRDPlzP1iKjDVpxviCg&sharer_sharetime=1601680745526&sharer_shareid=f79652d3d635914fb4b18ede0397c9e9&key=892b62220735b7b9fc2c1877bb5cc0bf2e0081d50bd7752d76032b0eafba81508676acd33da7d31fb2edef0c1ad1bdf39a3af48c8919087b248bfe81249b20bc3323091e40619746506c4897f03d7569e1d212aa7a89c806f01dbe2449c722867f61f2475159e994ecc4868eeb991ec6b78fe3df652e006cf2194fdbc1ca4ec2&ascene=1&uin=MTM2MjM3NjkzNw%3D%3D&devicetype=Windows+7+x64&version=62090529&lang=zh_CN&exportkey=AwF7Nh%2BFI31v5V%2F6KbTz99w%3D&pass_ticket=jT2e%2BiPw3N%2Bn6YleMmgY8ar4aTAd07SHFJdtebNKaWb9crunKl319QtjoemEDt2r&wx_header=0
-#  bCut = 1  设置分割图片为3*3
-#  增加循环移位功能： 设置： bCycle = 1; # 循环移位标志 added by zim
 
 
-# 可进一步扩展为： nXn 而不强制n=3
-
-
+from multiprocessing.dummy import Array
 from turtle import pos
 
 
@@ -126,6 +125,10 @@ if __name__ == "__main__":
             canvas.create_image(board_pos, image=img)
             # 初始化拼图板
 
+    primaryBoard = [[0 for i in range(ROWS)] for i in range(COLS)]
+    finalBoard = [[0 for i in range(ROWS)] for i in range(COLS)]
+    nonePos = [0, 0]
+
     def init_board():
         # 打乱图像块坐标
         L = list(range(8))
@@ -135,10 +138,15 @@ if __name__ == "__main__":
         for i in range(ROWS):
             for j in range(COLS):
                 idx = i * ROWS + j
+                finalBoard[i][j] = idx
                 orderID = L[idx]
                 if orderID is None:
+                    primaryBoard[i][j] = 8
+                    # nonePos = [i, j]  错误写法，只改了指针指向，在函数外无效！
+                    nonePos[0], nonePos[1] = i, j  # 正确写法
                     board[i][j] = None     # 为None时为空格
                 else:
+                    primaryBoard[i][j] = orderID
                     board[i][j] = Square(orderID)
                     # 重置游戏
 
@@ -257,29 +265,113 @@ if __name__ == "__main__":
 
     def callBack2():
         print("重新开始")
+        cv.bind("<Button-1>", mouseclick)
         play_game()
+        label1["text"] = str(steps)
         cv.delete('all')  # 清除canvas画布上的内容
         drawBoard(cv)
 
     def autoClick(x, y):
-        pos.x, pos.y = x*IMAGE_HEIGHT, y*IMAGE_WIDTH
+        pos.y, pos.x = x*IMAGE_HEIGHT, y*IMAGE_WIDTH
         mouseclick(pos)
 
-    def autoPlay():
-        primaryBoard = [[0 for i in range(ROWS)] for i in range(COLS)]
-        nonePos = [0, 0]
+    def generateKey(board):  # 转矩阵为一串数字，记录是否访问过
+        key = ''
         for i in range(ROWS):
             for j in range(COLS):
-                primaryBoard[i][j] = board[i][j].orderID if board[i][j] != None else 8
-                if board[i][j] == None:
-                    nonePos = [i, j]
-        print(nonePos)
-        autoClick(2, 2)
+                key += str(board[i][j])
+        return key
+
+    class Status:
+        status: Array
+        route: Array  # 路径
+        # 空白格位置
+        x = 0  # 行
+        y = 0  # 列
+
+        def __init__(self, status, route, x, y):
+            self.status, self.route, self.x, self.y = status, route, x, y
+
+    def autoPlay():
+        import queue
+        import copy
+        restore()
+        b2["text"] = "运算中，请稍后……"
+        b1["state"] = DISABLED
+        b2["state"] = DISABLED
+        b3["state"] = DISABLED
+        cv.unbind("<Button-1>")
+        dictionary = {}  # 记录访问列表
+        statusQueue = queue.Queue()
+        statusQueue.put(Status(copy.deepcopy(primaryBoard),
+                        [], nonePos[0], nonePos[1]))
+        while not statusQueue.empty():
+            front = statusQueue.get()
+            if front.status == finalBoard:
+                print("成功！")
+                print("路径：", front.route)
+                showinfo(title="计算完成", message="空白方块点击路径为："+str(front.route))
+                b2["text"] = "演示中，请稍后……"
+                import time
+                for step in front.route:
+                    autoClick(step[0], step[1])
+                    time.sleep(1)
+                b2["text"] = "自动游戏"
+                b1["state"] = NORMAL
+                b2["state"] = NORMAL
+                b3["state"] = NORMAL
+                cv.bind("<Button-1>", mouseclick)
+                return 0
+            key = generateKey(front.status)
+            dictionary[key] = 1
+            for i in range(-(COLS-1), COLS-1):  # 左右->列
+                if front.y+i >= 0 and front.y+i <= COLS-1:  # 判断合法性
+                    next = Status(copy.deepcopy(front.status),
+                                  copy.deepcopy(front.route), 0, 0)
+                    next.status[front.x][front.y +
+                                         i], next.status[front.x][front.y] = next.status[front.x][front.y], next.status[front.x][front.y+i]
+                    next.route.append([front.x, front.y+i])
+                    next.x, next.y = front.x, front.y+i
+                    key = generateKey(next.status)
+                    print(key)
+                    if key not in dictionary:
+                        dictionary[key] = 1
+                        statusQueue.put(next)
+            for j in range(-(ROWS-1), ROWS-1):  # 上下->行
+                if front.x+j >= 0 and front.x+j <= ROWS-1:  # 判断合法性
+                    next = Status(copy.deepcopy(front.status),
+                                  copy.deepcopy(front.route), 0, 0)
+                    next.status[front.x+j][front.y], next.status[front.x][front.y] = next.status[front.x][front.y], next.status[front.x+j][front.y]
+                    next.route.append([front.x+j, front.y])
+                    next.x, next.y = front.x+j, front.y
+                    key = generateKey(next.status)
+                    print(key)
+                    if key not in dictionary:
+                        dictionary[key] = 1
+                        statusQueue.put(next)
+
+    def restore():
+        for i in range(ROWS):
+            for j in range(COLS):
+                board[i][j] = Square(
+                    primaryBoard[i][j]) if primaryBoard[i][j] != 8 else None
+        cv.delete('all')  # 清除canvas画布上的内容
+        global steps
+        steps = 0
+        label1["text"] = str(steps)
+        drawBoard(cv)
+
+    import threading
+
+    def autoPlayThread():
+        t = threading.Thread(target=autoPlay)  # 多线程，防止阻塞UI
+        t.start()
 
     # 设置窗口
     cv = Canvas(root, bg='green', width=WIDTH, height=HEIGHT)
-    b1 = Button(root, text="重新开始", command=callBack2, width=10)
-    b2 = Button(root, text="自动游戏", command=autoPlay, width=10)
+    b1 = Button(root, text="重新生成", command=callBack2, width=10)
+    b2 = Button(root, text="自动游戏", command=autoPlayThread, width=30)
+    b3 = Button(root, text="重置回初始（不重生成）", command=restore, width=30)
     label1 = Label(root, text="0", fg="red", width=20)
     label1.pack()
     cv.bind("<Button-1>", mouseclick)
@@ -287,6 +379,7 @@ if __name__ == "__main__":
     cv.pack()
     b1.pack()
     b2.pack()
+    b3.pack()
     play_game()
     drawBoard(cv)
     root.mainloop()
