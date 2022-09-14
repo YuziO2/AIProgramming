@@ -385,7 +385,7 @@ if __name__ == "__main__":
                     print("成功！")
                     print("路径：", front.route)
                     showinfo(title="计算完成", message="空白方块点击路径为：\n" +
-                             str(front.route)+"\n最深层数为："+str(dictionary[generateKey(finalBoard)]))
+                             str(front.route)+"\n步数为："+str(len(front.route)))
                     b3["text"] = "演示中，请稍后……"
                     import time
                     for step in front.route:
@@ -434,6 +434,183 @@ if __name__ == "__main__":
                             statusStack.append(next)
             depthLimit += 1  # 未找到，扩大界限
 
+    # 计算当前位置和终态数字不一样的个数
+    def H(s: Status):
+        result = 0
+        for i in range(ROWS):
+            for j in range(COLS):
+                if s.status[i][j] != finalBoard[i][j]:
+                    result += 1
+        return result
+
+    # g(n):结点层数  h(n):位置和终态数字不一样的个数
+    # f(n)=g(n)+h(n) 估计值
+    # 1.初始将根节点放进open存放
+    # 2.开始遍历open到空为止，选择open列表中f(n)最小的图
+    # 3.判断是否为目标图，是则停止循环，反之将它的所有分支状态放进open，重新选择open列表中f(n)最小的图
+    def autoPlayA():
+        import copy
+        restore()
+        b4["text"] = "运算中，请稍后……"
+        b1["state"] = DISABLED
+        b2["state"] = DISABLED
+        b3["state"] = DISABLED
+        b4["state"] = DISABLED
+        b5["state"] = DISABLED
+        b6["state"] = DISABLED
+        cv.unbind("<Button-1>")
+        open = []
+        open.append(Status(copy.deepcopy(
+            primaryBoard), [], nonePos[0], nonePos[1]))
+        key = generateKey(primaryBoard)
+        dictionary = {key: 0}  # value表示层数
+        while len(open):
+            minStatus: Status
+            minF = 114514
+            for s in open:
+                f = dictionary[generateKey(s.status)]+H(s)
+                if minF > f:
+                    minF = f
+                    minStatus = s
+            open.remove(minStatus)
+            if minStatus.status == finalBoard:
+                print("成功！")
+                print("路径：", minStatus.route)
+                showinfo(title="计算完成", message="空白方块点击路径为：\n" +
+                         str(minStatus.route)+"\n步数为："+str(len(minStatus.route)))
+                b4["text"] = "演示中，请稍后……"
+                import time
+                for step in minStatus.route:
+                    autoClick(step[0], step[1])
+                    time.sleep(1)
+                b4["text"] = "自动游戏（A算法）"
+                b1["state"] = NORMAL
+                b2["state"] = NORMAL
+                b3["state"] = NORMAL
+                b4["state"] = NORMAL
+                b5["state"] = NORMAL
+                b6["state"] = NORMAL
+                cv.bind("<Button-1>", mouseclick)
+                return 0
+            for i in range(-(COLS-1), COLS):  # 左右->列
+                if i == 0:
+                    continue
+                if minStatus.y+i >= 0 and minStatus.y+i <= COLS-1:  # 判断合法性
+                    next = Status(copy.deepcopy(minStatus.status),
+                                  copy.deepcopy(minStatus.route), 0, 0)
+                    next.status[minStatus.x][minStatus.y +
+                                             i], next.status[minStatus.x][minStatus.y] = next.status[minStatus.x][minStatus.y], next.status[minStatus.x][minStatus.y+i]
+                    next.route.append([minStatus.x, minStatus.y+i])
+                    next.x, next.y = minStatus.x, minStatus.y+i
+                    newkey = generateKey(next.status)
+                    print(newkey)
+                    if newkey not in dictionary:
+                        dictionary[newkey] = dictionary[key]+1
+                        open.append(next)
+            for j in range(-(ROWS-1), ROWS):  # 上下->行
+                if j == 0:
+                    continue
+                if minStatus.x+j >= 0 and minStatus.x+j <= ROWS-1:  # 判断合法性
+                    next = Status(copy.deepcopy(minStatus.status),
+                                  copy.deepcopy(minStatus.route), 0, 0)
+                    next.status[minStatus.x+j][minStatus.y], next.status[minStatus.x][minStatus.y] = next.status[minStatus.x][minStatus.y], next.status[minStatus.x+j][minStatus.y]
+                    next.route.append([minStatus.x+j, minStatus.y])
+                    next.x, next.y = minStatus.x+j, minStatus.y
+                    newkey = generateKey(next.status)
+                    print(newkey)
+                    if newkey not in dictionary:
+                        dictionary[newkey] = dictionary[key]+1
+                        open.append(next)
+
+    #当前位置每一个数到目标状态的位置的直线距离的平方
+    def HStar(s: Status):
+        result = 0
+        for i in range(ROWS):
+            for j in range(COLS):
+                finaly = s.status[i][j] % COLS
+                finalx = int(s.status[i][j]/COLS)
+                result += (finalx-i)**2+(finaly-j)**2
+        return result
+
+    # g(n):结点层数  h(n):当前位置每一个数到目标状态的位置的直线距离的平方
+    # f(n)=g(n)+h(n) 估计值
+    # 1.初始将根节点放进open存放
+    # 2.开始遍历open到空为止，选择open列表中f(n)最小的图
+    # 3.判断是否为目标图，是则停止循环，反之将它的所有分支状态放进open，重新选择open列表中f(n)最小的图
+    def autoPlayAStar():
+        import copy
+        restore()
+        b5["text"] = "运算中，请稍后……"
+        b1["state"] = DISABLED
+        b2["state"] = DISABLED
+        b3["state"] = DISABLED
+        b4["state"] = DISABLED
+        b5["state"] = DISABLED
+        b6["state"] = DISABLED
+        cv.unbind("<Button-1>")
+        open = []
+        open.append(Status(copy.deepcopy(
+            primaryBoard), [], nonePos[0], nonePos[1]))
+        key = generateKey(primaryBoard)
+        dictionary = {key: 0}  # value表示层数
+        while len(open):
+            minStatus: Status
+            minF = 114514
+            for s in open:
+                f = dictionary[generateKey(s.status)]+HStar(s)
+                if minF > f:
+                    minF = f
+                    minStatus = s
+            open.remove(minStatus)
+            if minStatus.status == finalBoard:
+                print("成功！")
+                print("路径：", minStatus.route)
+                showinfo(title="计算完成", message="空白方块点击路径为：\n" +
+                         str(minStatus.route)+"\n步数为："+str(len(minStatus.route)))
+                b5["text"] = "演示中，请稍后……"
+                import time
+                for step in minStatus.route:
+                    autoClick(step[0], step[1])
+                    time.sleep(1)
+                b5["text"] = "自动游戏（A*算法）"
+                b1["state"] = NORMAL
+                b2["state"] = NORMAL
+                b3["state"] = NORMAL
+                b4["state"] = NORMAL
+                b5["state"] = NORMAL
+                b6["state"] = NORMAL
+                cv.bind("<Button-1>", mouseclick)
+                return 0
+            for i in range(-(COLS-1), COLS):  # 左右->列
+                if i == 0:
+                    continue
+                if minStatus.y+i >= 0 and minStatus.y+i <= COLS-1:  # 判断合法性
+                    next = Status(copy.deepcopy(minStatus.status),
+                                  copy.deepcopy(minStatus.route), 0, 0)
+                    next.status[minStatus.x][minStatus.y +
+                                             i], next.status[minStatus.x][minStatus.y] = next.status[minStatus.x][minStatus.y], next.status[minStatus.x][minStatus.y+i]
+                    next.route.append([minStatus.x, minStatus.y+i])
+                    next.x, next.y = minStatus.x, minStatus.y+i
+                    newkey = generateKey(next.status)
+                    print(newkey)
+                    if newkey not in dictionary:
+                        dictionary[newkey] = dictionary[key]+1
+                        open.append(next)
+            for j in range(-(ROWS-1), ROWS):  # 上下->行
+                if j == 0:
+                    continue
+                if minStatus.x+j >= 0 and minStatus.x+j <= ROWS-1:  # 判断合法性
+                    next = Status(copy.deepcopy(minStatus.status),
+                                  copy.deepcopy(minStatus.route), 0, 0)
+                    next.status[minStatus.x+j][minStatus.y], next.status[minStatus.x][minStatus.y] = next.status[minStatus.x][minStatus.y], next.status[minStatus.x+j][minStatus.y]
+                    next.route.append([minStatus.x+j, minStatus.y])
+                    next.x, next.y = minStatus.x+j, minStatus.y
+                    newkey = generateKey(next.status)
+                    print(newkey)
+                    if newkey not in dictionary:
+                        dictionary[newkey] = dictionary[key]+1
+                        open.append(next)
+
     def restore():
         for i in range(ROWS):
             for j in range(COLS):
@@ -455,13 +632,21 @@ if __name__ == "__main__":
         t = threading.Thread(target=autoPlayDFS)  # 多线程，防止阻塞UI
         t.start()
 
+    def autoPlayAThread():
+        t = threading.Thread(target=autoPlayA)  # 多线程，防止阻塞UI
+        t.start()
+
+    def autoPlayAStarThread():
+        t = threading.Thread(target=autoPlayAStar)  # 多线程，防止阻塞UI
+        t.start()
+
     # 设置窗口
     cv = Canvas(root, bg='green', width=WIDTH, height=HEIGHT)
     b1 = Button(root, text="重新生成", command=callBack2, width=10)
     b2 = Button(root, text="自动游戏（BFS）", command=autoPlayBFSThread, width=30)
     b3 = Button(root, text="自动游戏（DFS）", command=autoPlayDFSThread, width=30)
-    b4 = Button(root, text="自动游戏（）", command=autoPlayBFSThread, width=30)
-    b5 = Button(root, text="自动游戏（）", command=autoPlayBFSThread, width=30)
+    b4 = Button(root, text="自动游戏（A算法）", command=autoPlayAThread, width=30)
+    b5 = Button(root, text="自动游戏（A*算法）", command=autoPlayAStarThread, width=30)
     b6 = Button(root, text="重置回初始（不重生成）", command=restore, width=30)
     label1 = Label(root, text="0", fg="red", width=20)
     label1.pack()
@@ -471,6 +656,8 @@ if __name__ == "__main__":
     b1.pack()
     b2.pack()
     b3.pack()
+    b4.pack()
+    b5.pack()
     b6.pack()
     play_game()
     drawBoard(cv)
