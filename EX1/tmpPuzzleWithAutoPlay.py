@@ -10,7 +10,7 @@
 # 增加循环移位功能： 设置： bCycle = 1; # 循环移位标志 added by zim
 # 可进一步扩展为： nXn 而不强制n=3
 # ----------------------------------------------------------------
-# @Time    : 2022-9-13 13:24
+# @Time    : 2022-9-14 17:19
 # @Author  : Yuzi0201
 # @Site    :
 # @File    : tmpPuzzleWithAutoPlay.py
@@ -142,8 +142,10 @@ if __name__ == "__main__":
                 orderID = L[idx]
                 if orderID is None:
                     primaryBoard[i][j] = 8
-                    # nonePos = [i, j]  错误写法，只改了指针指向，在函数外无效！
+                    # nonePos = [i, j]  错误写法，这里是赋值了局部变量，并没有修改全局变量！！
                     nonePos[0], nonePos[1] = i, j  # 正确写法
+                    # global nonePos
+                    # nonePos = [i, j]      另一种正确写法
                     board[i][j] = None     # 为None时为空格
                 else:
                     primaryBoard[i][j] = orderID
