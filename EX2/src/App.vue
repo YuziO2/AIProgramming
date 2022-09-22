@@ -1,5 +1,5 @@
 <script setup>
-import { reactive } from "vue";
+import { reactive, ref, onMounted } from "vue";
 // This starter template is using Vue 3 <script setup> SFCs
 // Check out https://vuejs.org/api/sfc-script-setup.html#script-setup
 import Canvas from "./components/Canvas.vue";
@@ -9,6 +9,9 @@ const points = []; //城市
 const distances = []; //距离矩阵
 const groupsNumber = 100; //种群数量
 const groups = []; //种群
+const iterationTimes = 1000; //迭代次数
+const crossRate = 0.9; //交叉率
+const mutationRate = 0.1; //变异率
 //路线类，route:Array;fitness,surviveProbability,distances:Number
 function Route(route) {
   this.route = route;
@@ -18,8 +21,8 @@ function Route(route) {
 }
 
 //画布大小
-const width = 800;
-const height = 600;
+const width = 1000;
+const height = 500;
 //初始化城市
 for (let i = 0; i < pointsNumber; i++) {
   points.push([
@@ -57,32 +60,88 @@ for (let i = 0; i < groupsNumber; i++) {
 }
 //计算初始种群中每个个体的适应度及生存概率
 //适应度为序列中相邻两城之间的距离之和的倒数
-let totalFitness = 0;
-for (let i = 0; i < groupsNumber; i++) {
-  let totalDistance = 0;
-  for (let j = 0; j < pointsNumber - 1; j++)
-    totalDistance += distances[groups[i].route[j]][groups[i].route[j + 1]];
-  groups[i].distance = totalDistance;
-  groups[i].fitness = 1 / totalDistance; //个体的适应度为其总距离的倒数
-  totalFitness += groups[i].fitness;
+function calculateGroup() {
+  let totalFitness = 0;
+  for (let i = 0; i < groupsNumber; i++) {
+    let totalDistance = 0;
+    for (let j = 0; j < pointsNumber - 1; j++)
+      totalDistance += distances[groups[i].route[j]][groups[i].route[j + 1]];
+    groups[i].distance = totalDistance;
+    groups[i].fitness = 1 / totalDistance; //个体的适应度为其总距离的倒数
+    totalFitness += groups[i].fitness;
+  }
+  //计算每个个体的生存概率（被选择概率）,为个体适应度 / 总适应度
+  for (let i = 0; i < groupsNumber; i++)
+    groups[i].surviveProbability = groups[i].fitness / totalFitness;
 }
-//计算每个个体的生存概率（被选择概率）,为个体适应度 / 总适应度
-for (let i = 0; i < groupsNumber; i++)
-  groups[i].surviveProbability = groups[i].fitness / totalFitness;
+calculateGroup();
+
 //对生成的groups进行排序
 groups.sort((a, b) => b.surviveProbability - a.surviveProbability);
 const firstRoute = groups[0].route; //并传给canvas进行绘制
 
+const buttonMessage = ref("开始计算");
 function calculate() {
+  buttonDisabled.value = true;
+  buttonMessage.value = "计算中，请稍后……"
   console.log(groups);
+  for (let i = 0; i < iterationTimes; i++) {
+    //计算适应度以及生存概率
+    calculateGroup();
+    //选择开始
+    //计算累计的概率
+    const totalProbability = new Array(groupsNumber);
+    totalProbability[0] = groups[0].surviveProbability;
+    for (let j = 1; j < groupsNumber; j++) {
+      totalProbability[j] =
+        totalProbability[j - 1] + groups[j].surviveProbability;
+    }
+    //记录被选择的个体，利用赌轮选择法，随机生成0~1之间一个数，根据计算出来的累计概率选择个体
+    let selectedGroups = new Array(groupsNumber);
+    for (let j = 0; j < groupsNumber; j++) {
+      for (let k = 0; k < groupsNumber; k++) {
+        if (Math.random() <= totalProbability[k]) {
+          selectedGroups[j] = groups[k];
+          break;
+        }
+      }
+    }
+    //被选择的种群覆盖初始种群
+    for (let j = 0; j < groupsNumber; j++) {
+      groups[j] = selectedGroups[j];
+    }
+    //选择结束，交叉开始
+    //第k（k=0、2、4、...、2n）个个体和k+1个个体有一定的概率交叉变换
+    //设置一个0~1之间的随机数，若在Pc（交配率）范围内，则该该个体k与下一个个体k+1进行交配
+    //随机生成子代交配时DNA交换的数量(1~pointsNumber / 2)
+    let changeNumber = Math.floor(
+      ((Math.random() * pointsNumber * 10) % (pointsNumber / 2)) + 1
+    );
+    //交叉
+    for (let j = 0; j < groupsNumber; j++) {
+      //在交叉率以内，则该个体i与下一个个体i+1进行交叉
+      if (Math.random() < crossRate) {
+        let changePoint = Math.floor((Math.random() * pointsNumber * 10) % (pointsNumber - changeNumber))  //交叉点
+        
+      }
+    }
+  }
 }
 function refresh() {
   location.reload();
 }
+const message = ref("正在进行初始种群生成……");
+const buttonDisabled = ref(true);
+onMounted(() => {
+  setTimeout(() => {
+    message.value = "初始化后的种群中，存活率最高的一组如下：";
+    buttonDisabled.value = false;
+  }, 4000);
+});
 </script>
 
 <template>
-  <div>
+  <div class="header">
     <span>城市信息：</span>
     <ul class="cityList">
       <li v-for="(point, key) in points" :key="key">
@@ -91,6 +150,7 @@ function refresh() {
       </li>
     </ul>
   </div>
+  <div>{{ message }}</div>
   <Canvas
     :width="width"
     :height="height"
@@ -99,11 +159,17 @@ function refresh() {
   />
   <div>
     <button @click="refresh">重新生成（刷新）</button>
-    <button @click="calculate">开始计算</button>
+    <button @click="calculate" :disabled="buttonDisabled" v-text="buttonMessage"></button>
   </div>
 </template>
 
 <style scoped>
+.header {
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-wrap: wrap;
+}
 canvas {
   border: 2px solid;
 }
