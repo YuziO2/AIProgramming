@@ -22,27 +22,34 @@ onMounted(() => {
     drawConcentricCircle(canvas, value[0], value[1], value[2])
   );
   setTimeout(() => {
-    for (let i = 0; i < props.firstRoute.length - 1; i++) {
-      drawLine(
-        canvas,
-        props.points[props.firstRoute[i]][0],
-        props.points[props.firstRoute[i]][1],
-        props.points[props.firstRoute[i + 1]][0],
-        props.points[props.firstRoute[i + 1]][1]
-      ); //画生成groups时最好的个体
-    }
+    updateCanvas(props.points, props.firstRoute)
+  }, 3000);
+});
+
+function updateCanvas(points, route, canvas = myCanvas.value) {
+  const ctx = canvas.getContext("2d")
+  ctx.reset()
+  for (let i = 0; i < props.firstRoute.length - 1; i++) {
     drawLine(
       canvas,
-      props.points[props.firstRoute[0]][0],
-      props.points[props.firstRoute[0]][1],
-      props.points[props.firstRoute[props.firstRoute.length - 1]][0],
-      props.points[props.firstRoute[props.firstRoute.length - 1]][1]
-    ); //首尾闭合
-    props.points.forEach((value) =>
-      drawConcentricCircle(canvas, value[0], value[1], value[2])
-    ); //画点
-  }, 4000);
-});
+      points[route[i]][0],
+      points[route[i]][1],
+      points[route[i + 1]][0],
+      points[route[i + 1]][1]
+    ); //画生成groups时最好的个体
+  }
+  drawLine(
+    canvas,
+    points[route[0]][0],
+    points[route[0]][1],
+    points[route[route.length - 1]][0],
+    points[route[route.length - 1]][1]
+  ); //首尾闭合
+  points.forEach((value) =>
+    drawConcentricCircle(canvas, value[0], value[1], value[2])
+  ); //画点
+}
+defineExpose({ updateCanvas })
 </script>
 
 <template>

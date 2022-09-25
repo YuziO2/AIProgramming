@@ -3,6 +3,7 @@ import { reactive, ref, onMounted } from "vue";
 // This starter template is using Vue 3 <script setup> SFCs
 // Check out https://vuejs.org/api/sfc-script-setup.html#script-setup
 import Canvas from "./components/Canvas.vue";
+const canvas = ref()
 
 const pointsNumber = 10; //城市数量
 const points = []; //城市
@@ -33,9 +34,9 @@ for (let i = 0; i < pointsNumber; i++) {
       30 + ((Math.random() * 10000) % (height * devicePixelRatio - 60))
     ),
     "#" +
-      Math.floor(Math.random() * 0xffffff)
-        .toString(16)
-        .padStart(6, "0"), //随机颜色
+    Math.floor(Math.random() * 0xffffff)
+      .toString(16)
+      .padStart(6, "0"), //随机颜色
   ]);
 }
 //计算距离矩阵
@@ -46,7 +47,7 @@ for (let i = 0; i < pointsNumber; i++) {
       Math.floor(
         Math.sqrt(
           (points[i][0] - points[j][0]) ** 2 +
-            (points[i][1] - points[j][1]) ** 2
+          (points[i][1] - points[j][1]) ** 2
         )
       )
     );
@@ -78,13 +79,12 @@ calculateGroup();
 
 //对生成的groups进行排序
 groups.sort((a, b) => b.surviveProbability - a.surviveProbability);
-const firstRoute = groups[0].route; //并传给canvas进行绘制
+const firstRoute = ref(groups[0].route); //并传给canvas进行绘制
 
 const buttonMessage = ref("开始计算");
 function calculate() {
   buttonDisabled.value = true;
   buttonMessage.value = "计算中，请稍后……"
-  console.log(groups);
   for (let i = 0; i < iterationTimes; i++) {
     //计算适应度以及生存概率
     calculateGroup();
@@ -118,14 +118,56 @@ function calculate() {
       ((Math.random() * pointsNumber * 10) % (pointsNumber / 2)) + 1
     );
     //交叉
-    for (let j = 0; j < groupsNumber; j++) {
+    for (let j = 0; j < groupsNumber - 1; j += 2) {
       //在交叉率以内，则该个体i与下一个个体i+1进行交叉
       if (Math.random() < crossRate) {
         let changePoint = Math.floor((Math.random() * pointsNumber * 10) % (pointsNumber - changeNumber))  //交叉点
-        
+        let map = new Map()
+        for (let k = changePoint; k < changeNumber + changePoint; k++) {//建立不重复的映射
+          let temp1 = groups[j].route[k]
+          let temp2 = groups[j + 1].route[k]
+          groups[j].route[k] = temp2
+          groups[j + 1].route[k] = temp1//交换
+          if (map.has(temp1)) {
+            temp1 = map.get(temp1)
+          }
+          if (map.has(temp2)) {
+            temp2 = map.get(temp2)
+          }
+          map.set(temp1, temp2)
+          map.set(temp2, temp1)
+        }
+        //利用映射解决基因冲突问题
+        for (let k = 0; k < pointsNumber; k++) {
+          if (k >= changePoint && k < changeNumber + changePoint)
+            continue
+          if (map.has(groups[j].route[k]))
+            groups[j].route[k] = map.get(groups[j].route[k])
+          if (map.has(groups[j + 1].route[k]))
+            groups[j + 1].route[k] = map.get(groups[j + 1].route[k])
+        }
+      }
+    }
+    //变异
+    //每个实例都有可能基因（路径）多次变换
+    for (let j = 0; j < groupsNumber; j++) {
+      if (Math.random() < mutationRate) {
+        for (let exchangeTime = Math.floor(Math.random() * pointsNumber + 1); exchangeTime > 0; exchangeTime--) {
+          const changePointA = Math.floor(Math.random() * pointsNumber)
+          const changePointB = Math.floor(Math.random() * pointsNumber)
+          const temp = groups[j].route[changePointA]
+          groups[j].route[changePointA] = groups[j].route[changePointB]
+          groups[j].route[changePointB] = temp
+        }
       }
     }
   }
+  //对生成的groups进行排序
+  groups.sort((a, b) => b.surviveProbability - a.surviveProbability);
+  message.value = `计算完成，在经过${iterationTimes}次的迭代后，最终的最短路径如下，总路程长度为${groups[0].distance}`
+  buttonDisabled.value = true
+  buttonMessage.value = "计算完成"
+  canvas.value.updateCanvas(points, groups[0].route)
 }
 function refresh() {
   location.reload();
@@ -134,29 +176,23 @@ const message = ref("正在进行初始种群生成……");
 const buttonDisabled = ref(true);
 onMounted(() => {
   setTimeout(() => {
-    message.value = "初始化后的种群中，存活率最高的一组如下：";
+    message.value = "初始化后的种群中，存活率最高的一组如下，总路程长度为" + groups[0].distance;
     buttonDisabled.value = false;
   }, 4000);
 });
 </script>
 
-<template>
-  <div class="header">
-    <span>城市信息：</span>
-    <ul class="cityList">
-      <li v-for="(point, key) in points" :key="key">
-        <div class="pointCircle" :style="{ background: point[2] }"></div>
-        ({{ point[0] }},{{ point[1] }})
-      </li>
-    </ul>
-  </div>
-  <div>{{ message }}</div>
-  <Canvas
-    :width="width"
-    :height="height"
-    :points="points"
-    :firstRoute="firstRoute"
-  />
+<template><div class="header">
+  <span>城市信息：</span>
+  <ul class="cityList">
+    <li v-for="(point, key) in points" :key="key">
+      <div class="pointCircle" :style="{ background: point[2] }"></div>
+      ({{ point[0] }},{{ point[1] }})
+    </li>
+  </ul>
+</div>
+<div>{{ message }}</div>
+<Canvas ref="canvas" :width="width" :height="height" :points="points" :firstRoute="firstRoute" />
   <div>
     <button @click="refresh">重新生成（刷新）</button>
     <button @click="calculate" :disabled="buttonDisabled" v-text="buttonMessage"></button>
@@ -170,24 +206,29 @@ onMounted(() => {
   align-content: center;
   flex-wrap: wrap;
 }
+
 canvas {
   border: 2px solid;
 }
+
 .cityList {
   display: flex;
 }
+
 .cityList li {
   margin-left: 40px;
   list-style: none;
   display: flex;
   align-items: center;
 }
+
 .pointCircle {
   width: 12px;
   height: 12px;
   border-radius: 50%;
   border: 3px solid black;
 }
+
 button {
   width: 300px;
   margin: 0 30px 0 30px;
