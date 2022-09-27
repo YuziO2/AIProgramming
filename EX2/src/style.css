@@ -64,11 +64,12 @@ button:hover {
   border-color: #646cff;
 }
 
-button:focus,
+/* button:focus,
 button:focus-visible {
-  /* outline: 4px auto -webkit-focus-ring-color; */
   border: 3px solid black;
 }
+
+*/
 
 .card {
   padding: 2em;
