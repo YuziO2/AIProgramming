@@ -46,7 +46,7 @@ def DBSCAN(dataSet, ε, minPoints):
     OldNotAccess.extend(notAccess)
     cores = coreObjs.keys()
     #随机选取一个核心对象
-    randNum = randint(0, len(cores))
+    randNum = randint(0, len(cores)-1)
     cores = list(cores)
     core = cores[randNum]
     queue = []
